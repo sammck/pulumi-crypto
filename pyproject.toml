@@ -1,0 +1,84 @@
+[tool.poetry]
+name = "pulumi-crypto"
+version = "0.1.0"
+description = "Python implementation of Pulumi passphrase encryption/decription"
+authors = [ "Sam McKelvie <dev@mckelvie.org>" ]
+license = "MIT"
+keywords = [ "password", "passphrase", "secret", "Pulumi", "crypto", "encryption", "decryption"]
+readme = "README.md"
+homepage = "https://github.com/sammck/pulumi-crypto"
+repository = "https://github.com/sammck/pulumi-crypto.git"
+
+
+[tool.poetry.dependencies]
+python = "^3.7"
+pycryptodomex = "^3.14.1"
+Pygments = "^2.12.0"
+PyYAML = "^6.0"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.931"
+dunamai = "^1.9.0"
+python-semantic-release = "^7.25.2"
+#pydoc-markdown = "^4.6.0"
+types-PyYAML = "^6.0.7"
+types-Pygments = "^2.9.19"
+pylint = "^2.13.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+pulumi-crypto = 'pulumi_crypto.__main__:run'
+
+[tool.semantic_release]
+version_variable = 'pulumi_crypto/version.py:__version__,tests/test_pulumi_crypto.py:_pulumi_crypto_version'
+version_toml = 'pyproject.toml:tool.poetry.version'
+branch = 'main'
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+
+[tool.pylint.'MESSAGES CONTROL']
+disable=[
+    "wrong-import-order",
+    "duplicate-code",
+    "too-many-arguments",
+    "missing-function-docstring",
+    "import-outside-toplevel",
+    "too-few-public-methods",
+    "missing-class-docstring",
+    "unused-import",
+    "too-many-locals",
+    "unused-argument",
+    "invalid-name",
+    "no-self-use",
+    "global-statement",
+    "broad-except",
+    "too-many-branches",
+    "too-many-statements",
+    "exec-used",
+    "ungrouped-imports",
+    "subprocess-popen-preexec-fn",
+    "multiple-statements",
+    "too-many-public-methods",
+    "missing-module-docstring",
+    "too-many-instance-attributes",
+    "too-many-nested-blocks",
+    "unneeded-not",
+    "unnecessary-lambda",
+    "too-many-lines",
+    "too-many-boolean-expressions",
+  ]
+
+[tool.pylint.MASTER]
+ignore=[
+    ".venv",
+    "trash"
+  ]
+
+[tool.pylint.FORMAT]
+indent-after-paren=4
+indent-string='  '
+max-line-length=200
