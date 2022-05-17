@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pulumi-crypto"
 version = "1.0.0"
-description = "Python implementation of Pulumi passphrase encryption/decription"
+description = "Python implementation of Pulumi passphrase encryption/decryption"
 authors = [ "Sam McKelvie <dev@mckelvie.org>" ]
 license = "MIT"
 keywords = [ "password", "passphrase", "secret", "Pulumi", "crypto", "encryption", "decryption"]
