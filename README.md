@@ -36,7 +36,7 @@ Some key features of pulumi-crypto:
 * Allows separation of reading/writing Pulumi config files and deployment export data (which does not
   require knowledge of the correct passphrase) from encryption/decryption of secrets (which requires knowledge of the passphrase).
 
-This package was originally developed as part of a solution to work around a limitation of the current pulumi release--there is currently no easy way to get/set nonsecret config properties or stack deployment outputs without knowing the correct passphrase, even the passphrase is irrelevant for that task. By directly implementing a private version of `pulumi config` and `pulumi stack output` it is possible to defer use of the passphrase until it is needed, and allow working with encrypted inputs/outputs as well as nonsecret inputs and outputs, without knowledge of the passphrase.
+This package was originally developed as part of a solution to work around a limitation of the current pulumi release--there is currently no easy way to get/set nonsecret config properties or stack deployment outputs without knowing the correct passphrase, even if the passphrase is irrelevant for that task. By directly implementing a private version of `pulumi config` and `pulumi stack output` it is possible to defer use of the passphrase until it is needed, and allow working with encrypted inputs/outputs as well as nonsecret inputs and outputs, without knowledge of the passphrase.
 
 Pulumi passphrase encryption details
 ------------------------------------
@@ -66,7 +66,7 @@ It is not necessary for the passphrase salt or the salt state string to be the s
 ### Pulumi stack config files
 Pulumi stack config files are YAML documents (e.g., "Pulumi._stack-name_.yaml") that represent a dict. They maintain the salt state string in top-level property "encryptionsalt".
 
-Configuration properties are presented in a child dict called "config". Each property of this dict represents a single stack configuration
+Configuration properties are presented in a child dict named "config". Each property of this dict represents a single stack configuration
 property. All configuration properties are simple strings; however _secret_ configuration properties are represented in the config file
 as dicts with a single property, "secure", which holds a string that is the ciphertext that when decrypted will produce the configuration property's plaintext value.
 
