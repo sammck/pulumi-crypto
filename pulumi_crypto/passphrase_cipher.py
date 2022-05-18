@@ -23,6 +23,22 @@ import json
 
 from .internal_types import Jsonable
 from .exceptions import PulumiCryptoError, PulumiCryptoBadPassphraseError
+from .constants import (
+    KEY_SIZE_BYTES,
+    NONCE_SIZE_BYTES,
+    TAG_SIZE_BYTES,
+    PBKDF2_COUNT,
+    VERIFICATION_PLAINTEXT,
+    PASSPHRASE_SALT_SIZE_BYTES,
+  )
+from .util import (
+    generate_key,
+    generate_key_from_passphrase,
+    generate_nonce,
+    encrypt_string,
+    decrypt_string,
+    PBKDF2_HASH_MODULE,
+  )
 
 class PassphraseCipher:
   """A pulumi-compatible encrypter/decrypter derived from a passphrase and a salt
@@ -137,25 +153,25 @@ class PassphraseCipher:
 
   # ==========
   # The following parameters are set by Pulumi, and cannot be changed without breaking Pulumi compatibility
-  KEY_SIZE_BYTES = 256//8
+  KEY_SIZE_BYTES = KEY_SIZE_BYTES
   """Number of bytes in the derived symmetric AES encryption key"""
 
-  PBKDF2_COUNT = 1000000
+  PBKDF2_COUNT = PBKDF2_COUNT
   """Number of hash iterations from passphrase to generate key (large value ensures dictionary attack is slow)"""
 
-  PBKDF2_HASH_MODULE = SHA256
+  PBKDF2_HASH_MODULE = PBKDF2_HASH_MODULE
   """Type of hash used to generate AES 256-bit key from passphrase"""
 
-  VERIFICATION_PLAINTEXT = "pulumi"
+  VERIFICATION_PLAINTEXT = VERIFICATION_PLAINTEXT
   """Plaintext that is encrypted and saved with salt as a way to verify correctness of a passphrase"""
 
-  SALT_SIZE_BYTES = 8
+  PASSPHRASE_SALT_SIZE_BYTES = PASSPHRASE_SALT_SIZE_BYTES
   """Number of bytes of salt added to passphrase to uniqueify key for the deployment"""
 
-  TAG_SIZE_BYTES = 16
+  TAG_SIZE_BYTES = TAG_SIZE_BYTES
   """Size of the HMAC verification tag appended to each encrypted ciphertext. Used to validate round-trip encrypt/decrypt"""
 
-  NONCE_SIZE_BYTES = 12
+  NONCE_SIZE_BYTES = NONCE_SIZE_BYTES
   """Number of random bytes used for the nonce on each encrypted value"""
 
   # ===========
@@ -208,7 +224,7 @@ class PassphraseCipher:
                               up to one second to compute. If None, the Pulumi-compatible value will be used.
                               Defaults to None.
         verification_plaintext(Optional[str], optional):
-                              An arbitrary but well-known, public  short plaintext string that will be encrypted using
+                              An arbitrary but well-known, public short plaintext string that will be encrypted using
                               the other parameters to produce a "salt_state" that can be used for verification
                               of a passphrase. For compatibility with Pulumi secrets, this must be "pulumi".
                               If None, the Pulumi-compatible value will be used. Defaults to None.
@@ -233,7 +249,13 @@ class PassphraseCipher:
     elif not salt_state is None:
       raise PulumiCryptoError("Salt and salt_state cannot both be provided to PassphraseCipher")
     self._salt = salt
-    key = PBKDF2(passphrase, salt, dkLen=self.KEY_SIZE_BYTES, count=pbkdf2_count, hmac_hash_module=self.PBKDF2_HASH_MODULE)
+    key = generate_key_from_passphrase(
+        passphrase,
+        salt,
+        key_size_bytes=self.KEY_SIZE_BYTES,
+        pbkdf2_count=pbkdf2_count,
+        hmac_hash_module=self.PBKDF2_HASH_MODULE
+      )
     self._key = key
     if salt_state is None:
       verification_ciphertext = self.encrypt(verification_plaintext)
@@ -301,16 +323,7 @@ class PassphraseCipher:
              decrypt back to plaintext. The format of this string is:
                    "v1:" + b64encode(nonce) + ":" b64encode(encrypted_data + validation_tag_16_bytes)
     """
-    if nonce is None:
-      nonce = get_random_bytes(self.NONCE_SIZE_BYTES)
-    cipher = cast(GcmMode, AES.new(self._key, AES.MODE_GCM, nonce=nonce))
-    bin_plaintext = plaintext.encode('utf-8')
-    ciphertext_data, tag = cipher.encrypt_and_digest(bin_plaintext)
-    assert len(tag) == self.TAG_SIZE_BYTES
-    ciphertext_data_and_tag = ciphertext_data + tag
-    b64_nonce = b64encode(nonce).decode('utf-8')
-    b64_ciphertext = b64encode(ciphertext_data_and_tag).decode('utf-8')
-    result = f"v1:{b64_nonce}:{b64_ciphertext}"
+    result = encrypt_string(plaintext, self._key, nonce=nonce)
     return result
 
   def encrypt_jsonable(self, obj: Jsonable, nonce: Optional[bytes]=None) -> str:
@@ -380,19 +393,7 @@ class PassphraseCipher:
         PulumiCryptoError: The ciphertext was not the result of encryption with the passphrase and salt provided
                            at construction time
     """
-    try:
-      parts = ciphertext.split(':')
-      if len(parts) != 3 or parts[0] != 'v1':
-        raise PulumiCryptoError(f"Badly formed ciphertext value: {ciphertext}")
-      nonce = b64decode(parts[1])
-      ciphertext_data_and_tag = b64decode(parts[2])
-      ciphertext_data = ciphertext_data_and_tag[:-self.TAG_SIZE_BYTES]
-      ciphertext_tag = ciphertext_data_and_tag[-self.TAG_SIZE_BYTES:]
-      cipher = cast(GcmMode, AES.new(self._key, AES.MODE_GCM, nonce=nonce))
-      bin_plaintext = cipher.decrypt_and_verify(ciphertext_data, ciphertext_tag)
-      plaintext = bin_plaintext.decode('utf-8')
-    except Exception as e:
-      raise PulumiCryptoError(f"Ciphertext cannot be decrypted with given passphrase and salt \"{self.salt_state}\": {ciphertext}") from e
+    plaintext = decrypt_string(ciphertext, self._key)
     return plaintext
 
   def decrypt_jsonable(self, ciphertext: str) -> Jsonable:
